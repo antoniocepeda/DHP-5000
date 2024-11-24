@@ -1,14 +1,41 @@
-import React, { useTransition } from 'react';
+import React, { useTransition, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { theme } from '../../styles/theme';
 import { Clock, CheckCircle, MessageSquare } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { tickets } from '../../data/tickets';
+import { questionService } from '../../services/QuestionService';
+import type { Question } from '../../types';
+import LoadingSpinner from '../common/LoadingSpinner';
 
 export default function ExpertDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [isPending, startTransition] = useTransition();
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const loadQuestions = async () => {
+      if (!user?.id) return;
+      try {
+        const result = await questionService.getByAssignedTo(user.id);
+        setQuestions(result.questions);
+      } catch (err) {
+        setError(err as Error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadQuestions();
+  }, [user]);
+
+  if (loading) return <LoadingSpinner />;
+  if (error) return <div>Error loading questions: {error.message}</div>;
+
+  const activeQuestions = questions.filter(q => q.status === 'assigned');
+  const completedQuestions = questions.filter(q => q.status === 'completed');
 
   const handleNavigation = (path: string) => {
     startTransition(() => {
@@ -25,7 +52,7 @@ export default function ExpertDashboard() {
   };
 
   // Filter tickets assigned to the current expert
-  const expertTickets = tickets.filter(ticket => ticket.assignedTo === user?.name);
+  const expertTickets = questions.filter(ticket => ticket.assignedTo === user?.name);
   
   const assignedCount = expertTickets.filter(t => t.status === 'assigned').length;
   const completedCount = expertTickets.filter(t => t.status === 'completed').length;

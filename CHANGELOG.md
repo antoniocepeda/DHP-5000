@@ -1,8 +1,37 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.3.0] - 2024-03-24
+
+### Added
+- Firestore integration for all components
+  - QuestionDetail component with real-time updates
+  - Question listing with Firestore pagination
+  - Message threading preparation
+  - ExpertService with CRUD operations
+- Composite indexes for complex queries
+  - status + submittedAt
+  - assignedTo + submittedAt
+  - providerId + submittedAt
+  - userId + submittedAt
+
+### Changed
+- Migrated from local data to Firestore
+  - Removed tickets.ts
+  - Removed experts.ts
+- Updated all dashboard components to use Firestore
+  - AdminDashboard
+  - ExpertDashboard
+  - ConsumerDashboard
+  - ProviderDashboard
+- Enhanced question filtering and sorting
+- Added fallback queries for index building
+
+### Removed
+- Local data stores
+  - tickets.ts
+  - experts.ts
+- Static data handling methods
 
 ## [0.2.0] - 2024-03-24
 

@@ -1,25 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { theme } from '../../styles/theme';
 import { Search, Filter, ChevronDown, Clock } from 'lucide-react';
-import { tickets } from '../../data/tickets';
+import { questionService } from '../../services/QuestionService';
 import type { Question } from '../../types';
 import { Select } from '../../components/common/Select';
 import { Input } from '../../components/common/Input';
+import LoadingSpinner from '../common/LoadingSpinner';
 
 export default function AssignedQuestionsPage() {
   const navigate = useNavigate();
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [expertFilter, setExpertFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
 
-  const assignedQuestions = tickets.filter(ticket => ticket.status === 'assigned');
+  useEffect(() => {
+    const loadQuestions = async () => {
+      try {
+        const result = await questionService.getByStatus('assigned');
+        setQuestions(result.questions);
+      } catch (error) {
+        console.error('Error loading questions:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const experts = Array.from(new Set(assignedQuestions.map(q => q.assignedTo))).filter(Boolean);
-  const categories = Array.from(new Set(assignedQuestions.map(q => q.category)));
+    loadQuestions();
+  }, []);
 
-  const filteredQuestions = assignedQuestions.filter((question: Question) => {
+  if (loading) return <LoadingSpinner />;
+
+  const experts = Array.from(new Set(questions.map(q => q.assignedTo))).filter(Boolean);
+  const categories = Array.from(new Set(questions.map(q => q.category)));
+
+  const filteredQuestions = questions.filter((question: Question) => {
     const matchesSearch = 
       question.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       question.question.toLowerCase().includes(searchTerm.toLowerCase());

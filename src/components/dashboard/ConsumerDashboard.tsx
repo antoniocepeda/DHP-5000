@@ -1,18 +1,41 @@
-import React, { useTransition } from 'react';
+import React, { useTransition, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { theme } from '../../styles/theme';
 import { Clock, CheckCircle, MessageSquare, Plus } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { tickets } from '../../data/tickets';
+import { questionService } from '../../services/QuestionService';
+import type { Question } from '../../types';
+import LoadingSpinner from '../common/LoadingSpinner';
 
 export default function ConsumerDashboard() {
-  const { user } = useAuth();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const userTickets = tickets.filter(ticket => ticket.userId === user?.id);
-  const activeTickets = userTickets.filter(ticket => ticket.status !== 'completed');
-  const completedTickets = userTickets.filter(ticket => ticket.status === 'completed');
+  useEffect(() => {
+    const loadQuestions = async () => {
+      if (!user?.id) return;
+      try {
+        const result = await questionService.getByUserId(user.id);
+        setQuestions(result.questions);
+      } catch (err) {
+        setError(err as Error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadQuestions();
+  }, [user]);
+
+  if (loading) return <LoadingSpinner />;
+  if (error) return <div>Error loading questions: {error.message}</div>;
+
+  const activeQuestions = questions.filter(q => q.status !== 'completed');
+  const completedQuestions = questions.filter(q => q.status === 'completed');
 
   const handleNavigation = (path: string) => {
     startTransition(() => {
@@ -40,7 +63,7 @@ export default function ConsumerDashboard() {
               <Clock className="w-5 h-5 text-brand-purple" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-brand-purple">{activeTickets.length}</p>
+          <p className="text-3xl font-bold text-brand-purple">{activeQuestions.length}</p>
           <p className="text-sm text-gray-500 mt-2">Awaiting responses</p>
         </div>
 
@@ -51,7 +74,7 @@ export default function ConsumerDashboard() {
               <CheckCircle className="w-5 h-5 text-brand-pink" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-brand-pink">{completedTickets.length}</p>
+          <p className="text-3xl font-bold text-brand-pink">{completedQuestions.length}</p>
           <p className="text-sm text-gray-500 mt-2">Questions answered</p>
         </div>
 
@@ -63,7 +86,7 @@ export default function ConsumerDashboard() {
             </div>
           </div>
           <p className="text-3xl font-bold text-brand-orange">
-            {userTickets.reduce((sum, ticket) => sum + (ticket.messages?.length || 0), 0)}
+            {questions.reduce((sum, question) => sum + (question.messages?.length || 0), 0)}
           </p>
           <p className="text-sm text-gray-500 mt-2">Total interactions</p>
         </div>
@@ -75,33 +98,33 @@ export default function ConsumerDashboard() {
         </div>
         <div className="p-6">
           <div className="space-y-4">
-            {userTickets.slice(0, 5).map(ticket => (
+            {questions.slice(0, 5).map(question => (
               <div
-                key={ticket.id}
-                onClick={() => handleNavigation(`/tickets/${ticket.id}`)}
+                key={question.id}
+                onClick={() => handleNavigation(`/tickets/${question.id}`)}
                 className="border border-gray-100 rounded-xl p-6 hover:bg-gray-50 cursor-pointer"
               >
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-medium text-gray-900">{ticket.title}</h3>
+                  <h3 className="font-medium text-gray-900">{question.title}</h3>
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    ticket.status === 'completed'
+                    question.status === 'completed'
                       ? 'bg-green-100 text-green-800'
                       : 'bg-blue-100 text-blue-800'
                   }`}>
-                    {ticket.status.replace('_', ' ').charAt(0).toUpperCase() + ticket.status.slice(1)}
+                    {question.status.replace('_', ' ').charAt(0).toUpperCase() + question.status.slice(1)}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 mb-4 line-clamp-2">{ticket.question}</p>
+                <p className="text-sm text-gray-600 mb-4 line-clamp-2">{question.question}</p>
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-500">
-                    {new Date(ticket.submittedAt).toLocaleDateString()}
+                    {new Date(question.submittedAt).toLocaleDateString()}
                   </span>
                   <span className="text-brand-purple">View Details →</span>
                 </div>
               </div>
             ))}
 
-            {userTickets.length === 0 && (
+            {questions.length === 0 && (
               <div className="text-center py-8">
                 <p className="text-gray-500">No questions yet. Ask your first question!</p>
                 <button

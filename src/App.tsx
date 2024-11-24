@@ -15,7 +15,7 @@ import ProviderDashboard from './components/dashboard/ProviderDashboard';
 import QuestionsPage from './components/pages/QuestionsPage';
 import ExpertsPage from './components/experts/ExpertsPage';
 import ExpertProfile from './components/experts/ExpertProfile';
-import QuestionDetail from './components/questions/QuestionDetail';
+import QuestionDetail from './components/pages/QuestionDetail';
 import QuestionForm from './components/questions/QuestionForm';
 import LandingPage from './components/pages/LandingPage';
 import VerifiedExpertsPage from './components/features/VerifiedExpertsPage';
@@ -64,10 +64,26 @@ const router = createBrowserRouter(
         </ProtectedRoute>
       } />
 
-      <Route path="/questions/*" element={
+      <Route path="/questions" element={
         <ProtectedRoute>
           <DashboardLayout>
             <QuestionsPage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/questions/:id" element={
+        <ProtectedRoute>
+          <DashboardLayout>
+            <QuestionDetail />
+          </DashboardLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/experts/:id" element={
+        <ProtectedRoute>
+          <DashboardLayout>
+            <ExpertProfile />
           </DashboardLayout>
         </ProtectedRoute>
       } />

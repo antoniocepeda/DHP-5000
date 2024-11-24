@@ -1,15 +1,50 @@
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { theme } from '../../styles/theme';
 import { Clock, CheckCircle, AlertTriangle, ArrowUpDown } from 'lucide-react';
-import { tickets, getAssignedTickets, getUnassignedTickets, getCompletedTickets } from '../../data/tickets';
+import { getAssignedTickets, getUnassignedTickets, getCompletedTickets } from '../../data/tickets';
+import { questionService } from '../../services/QuestionService';
 import type { Question } from '../../types';
+import LoadingSpinner from '../common/LoadingSpinner';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [isPending, startTransition] = useTransition();
   const [sortField, setSortField] = useState<keyof Question>('id');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const loadQuestions = async () => {
+      try {
+        // Get questions by status
+        const unassigned = await questionService.getByStatus('unassigned');
+        const assigned = await questionService.getByStatus('assigned');
+        const completed = await questionService.getByStatus('completed');
+        
+        setQuestions([
+          ...unassigned.questions,
+          ...assigned.questions,
+          ...completed.questions
+        ]);
+      } catch (err) {
+        setError(err as Error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadQuestions();
+  }, []);
+
+  if (loading) return <LoadingSpinner />;
+  if (error) return <div>Error loading questions: {error.message}</div>;
+
+  const unassignedQuestions = questions.filter(q => q.status === 'unassigned');
+  const assignedQuestions = questions.filter(q => q.status === 'assigned');
+  const completedQuestions = questions.filter(q => q.status === 'completed');
 
   const handleSort = (field: keyof Question) => {
     if (sortField === field) {
@@ -33,11 +68,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const assignedQuestions = getAssignedTickets();
-  const unassignedQuestions = getUnassignedTickets();
-  const completedQuestions = getCompletedTickets();
-
-  const sortedQuestions = [...tickets].sort((a, b) => {
+  const sortedQuestions = [...questions].sort((a, b) => {
     let aValue = a[sortField];
     let bValue = b[sortField];
 

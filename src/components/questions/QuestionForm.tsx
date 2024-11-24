@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Send, CheckCircle } from 'lucide-react';
 import { theme } from '../../styles/theme';
-import { tickets } from '../../data/tickets';
+import { questionService } from '../../services/QuestionService';
 import type { Ticket } from '../../types';
 import { Input } from '../common/Input';
 

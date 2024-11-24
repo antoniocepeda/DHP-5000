@@ -1,212 +1,101 @@
 import React, { useState } from 'react';
-import { theme } from '../../styles/theme';
-import { Search, Plus, Mail, Phone, Award, X } from 'lucide-react';
-import { experts, addExpert } from '../../data/experts';
-import type { Expert } from '../../types';
-import { Input } from '../common/Input';
+import { useNavigate } from 'react-router-dom';
+import { useExperts } from '../../hooks/useExperts';
+import LoadingSpinner from '../common/LoadingSpinner';
+import { expertService } from '../../services/ExpertService';
 
 export default function ExpertsPage() {
-  const [showAddForm, setShowAddForm] = useState(false);
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [newExpert, setNewExpert] = useState<Partial<Expert>>({
-    name: '',
-    specialty: '',
-    email: '',
-    phone: '',
-    status: 'Active',
-    cases: 0
+  const [specialtyFilter, setSpecialtyFilter] = useState('all');
+  
+  const { experts, loading, error } = useExperts();
+
+  const filteredExperts = experts.filter((expert) => {
+    const matchesSearch = 
+      expert.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      expert.specialty.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesSpecialty = specialtyFilter === 'all' || expert.specialty === specialtyFilter;
+
+    return matchesSearch && matchesSpecialty;
   });
 
-  const handleViewProfile = (expertId: string) => {
-    window.history.pushState({}, '', `/experts/${expertId}`);
-    window.dispatchEvent(new PopStateEvent('popstate'));
-  };
-
-  const handleAddExpert = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newExpert.name || !newExpert.specialty || !newExpert.email || !newExpert.phone) {
-      return;
-    }
-
-    const expertId = `E${(experts.length + 1).toString().padStart(3, '0')}`;
-    const expert: Expert = {
-      id: expertId,
-      name: newExpert.name,
-      specialty: newExpert.specialty,
-      email: newExpert.email,
-      phone: newExpert.phone,
-      status: 'Active',
-      cases: 0
-    };
-
-    addExpert(expert);
-    setShowAddForm(false);
-    setNewExpert({
-      name: '',
-      specialty: '',
-      email: '',
-      phone: '',
-      status: 'Active',
-      cases: 0
-    });
-  };
-
-  const filteredExperts = experts.filter(expert =>
-    expert.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    expert.specialty.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const specialties = Array.from(new Set(experts.map(e => e.specialty)));
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Medical Experts</h1>
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <Input
-              icon={<Search className="w-5 h-5" />}
-              type="text"
-              placeholder="Search experts..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="py-2"
-            />
-          </div>
-          <button 
-            onClick={() => setShowAddForm(true)}
-            className={theme.components.button.primary + ' px-4 py-2 inline-flex items-center gap-2'}
+      {/* Test Button - Remove after confirming it works */}
+      <button 
+        onClick={async () => {
+          console.log('Testing Firestore experts connection...');
+          try {
+            const result = await expertService.getAll();
+            console.log('Firestore experts response:', result);
+          } catch (error) {
+            console.error('Firestore experts error:', error);
+          }
+        }}
+        className="bg-brand-purple text-white px-4 py-2 rounded"
+      >
+        Test Experts Firestore
+      </button>
+
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        <h1 className="text-2xl font-bold text-gray-900">Experts Directory</h1>
+        
+        {/* Search and Filters */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <input
+            type="text"
+            placeholder="Search experts..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="border rounded-lg px-4 py-2"
+          />
+          <select
+            value={specialtyFilter}
+            onChange={(e) => setSpecialtyFilter(e.target.value)}
+            className="border rounded-lg px-4 py-2"
           >
-            <Plus className="w-4 h-4" />
-            Add Expert
-          </button>
+            <option value="all">All Specialties</option>
+            {specialties.map(specialty => (
+              <option key={specialty} value={specialty}>{specialty}</option>
+            ))}
+          </select>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredExperts.map((expert) => (
-          <div key={expert.id} className={theme.components.card.base + ' p-6'}>
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-medium text-gray-900">{expert.name}</h3>
-                <p className="text-sm text-gray-500">{expert.specialty}</p>
-              </div>
-              <span className="px-3 py-1 rounded-full text-xs font-medium bg-brand-purple/10 text-brand-purple">
-                {expert.status}
-              </span>
-            </div>
-            
-            <div className="space-y-3 mb-4">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Mail className="w-4 h-4" />
-                {expert.email}
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Phone className="w-4 h-4" />
-                {expert.phone}
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Award className="w-4 h-4" />
-                {expert.cases} cases completed
+      {/* Experts List */}
+      {loading ? (
+        <LoadingSpinner />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredExperts.map(expert => (
+            <div
+              key={expert.id}
+              onClick={() => navigate(`/experts/${expert.id}`)}
+              className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
+            >
+              <h3 className="font-medium text-gray-900">{expert.name}</h3>
+              <p className="text-brand-purple">{expert.specialty}</p>
+              <div className="mt-2 text-sm text-gray-500">
+                <p>{expert.email}</p>
+                <p>Cases: {expert.cases}</p>
+                <span className={`inline-block px-2 py-1 rounded-full text-xs ${
+                  expert.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {expert.status}
+                </span>
               </div>
             </div>
-
-            <div className="flex gap-2">
-              <button 
-                onClick={() => handleViewProfile(expert.id)}
-                className={theme.components.button.secondary + ' px-4 py-2 text-sm flex-1'}
-              >
-                View Profile
-              </button>
-              <button 
-                onClick={() => handleViewProfile(expert.id)}
-                className={theme.components.button.primary + ' px-4 py-2 text-sm flex-1'}
-              >
-                Assign Case
-              </button>
+          ))}
+          
+          {filteredExperts.length === 0 && (
+            <div className="col-span-full text-center text-gray-500 py-8">
+              No experts found
             </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Add Expert Modal */}
-      {showAddForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className={`${theme.components.card.base} w-full max-w-lg p-6`}>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">Add New Expert</h2>
-              <button 
-                onClick={() => setShowAddForm(false)}
-                className="p-2 hover:bg-gray-100 rounded-full"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddExpert} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name
-                </label>
-                <Input
-                  type="text"
-                  value={newExpert.name}
-                  onChange={(e) => setNewExpert({ ...newExpert, name: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Specialty
-                </label>
-                <Input
-                  type="text"
-                  value={newExpert.specialty}
-                  onChange={(e) => setNewExpert({ ...newExpert, specialty: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <Input
-                  type="email"
-                  value={newExpert.email}
-                  onChange={(e) => setNewExpert({ ...newExpert, email: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone
-                </label>
-                <Input
-                  type="tel"
-                  value={newExpert.phone}
-                  onChange={(e) => setNewExpert({ ...newExpert, phone: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowAddForm(false)}
-                  className={theme.components.button.secondary + ' px-4 py-2'}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className={theme.components.button.primary + ' px-4 py-2'}
-                >
-                  Add Expert
-                </button>
-              </div>
-            </form>
-          </div>
+          )}
         </div>
       )}
     </div>
